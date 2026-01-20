@@ -32,7 +32,7 @@ EQUITY_HISTORY_SCHEMA = {
     "amount": "REAL"
 }
 
-def get_list_date(symbol: str, api_key : Optional[str] = "") -> dateType:
+def get_list_date(symbol: str, api_key: Optional[str] = "") -> dateType:
     """
     Retrieves the listing date for a given stock symbol.
 
@@ -48,6 +48,7 @@ def get_list_date(symbol: str, api_key : Optional[str] = "") -> dateType:
     listed_date = equity_info.get("listed_date")
    
     if listed_date is not None:
+        logger.info(f"Listing date for {symbol} is {listed_date}.")
         return pd.to_datetime(listed_date, unit='ms').iloc[0].date()
     
     return (datetime.now() - timedelta(days=365)).date()
@@ -61,8 +62,9 @@ def check_cache(symbol: str,
     Check if the cache contains the latest data for the given symbol.
     """
     from mysharelib.tools import last_closing_day
+    from mysharelib.em.orginfo import get_listing_date
     
-    start = get_list_date(symbol)
+    start = get_listing_date(symbol)
     end = last_closing_day()
     # Please note that the format of the date string must be "YYYY-MM-DD" in database.
     cache_df = cache.fetch_date_range(start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
@@ -148,7 +150,7 @@ def ak_download(
 
     # If not in cache, download data
     # Download data using AKShare
-    data_util_today_df = ak_download_without_cache(symbol_b, period=period, api_key=api_key, start_date=start, end_date=end)
+    data_util_today_df = ak_download_without_cache(symbol_b, period=period, api_key=api_key, start_date=start_dt.strftime("%Y%m%d"), end_date=end_dt.strftime("%Y%m%d"))
     cache.write_dataframe(data_util_today_df)
     
     return cache.fetch_date_range(start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
@@ -318,18 +320,31 @@ def get_hk_dividends(
     return dividends
 
 def convert_stock_code_format(symbol):
-    # 将.SS转换为SH前缀 .SZ后缀转换为SZ前缀
-    # 如果没有后缀，根据代码判断市场：6开头为SH，0/3开头为SZ，8开头为BJ
-    symbol = symbol.split(",")
+    """Convert Yahoo-style symbols to Akshare/Eastmoney-style prefixes.
+
+    Accepts common Yahoo formats:
+    - CN: 600036.SS / 600036.SH / 000001.SZ / 830001.BJ
+    - Funds: 000001.OF
+    - Already prefixed: SH600036 / SZ000001 / BJ830001 / OF000001
+
+    Returns:
+        Comma-separated symbols with prefixes (e.g. SH600036,SZ000001).
+    """
+
+    # 将 .SS/.SH 转换为 SH 前缀；.SZ -> SZ；.BJ -> BJ；.OF -> OF
+    # 如果没有后缀，根据代码判断市场：6/9 开头为 SH，0/3 开头为 SZ，8/4 开头为 BJ
+    symbol = str(symbol).upper().split(",")
     symbol = [s.strip() for s in symbol if s.strip()]
     converted_symbol = []
     for s in symbol:
-        if ".SS" in s:
-            s = "SH" + s.replace(".SS", "")
-        elif ".SZ" in s:
-            s = "SZ" + s.replace(".SZ", "")
-        elif ".OF" in s:
-            s = "OF" + s.replace(".OF", "")
+        if s.endswith(".SS") or s.endswith(".SH"):
+            s = "SH" + s.split(".")[0]
+        elif s.endswith(".SZ"):
+            s = "SZ" + s.split(".")[0]
+        elif s.endswith(".BJ"):
+            s = "BJ" + s.split(".")[0]
+        elif s.endswith(".OF"):
+            s = "OF" + s.split(".")[0]
         elif s.startswith("SH") or s.startswith("SZ") or s.startswith("BJ") or s.startswith("OF"):
             # 已经有前缀，不需要转换
             pass

@@ -47,6 +47,9 @@ class AKShareKeyMetricsData(KeyMetricsData):
     """AKShare Key Metrics Data."""
 
     __alias_dict__ = {
+        "symbol": "证券代码",
+        "fiscal_period": "报告类型",
+        "period_ending": "报告日期",
         "market_cap": "流通值",
         "pe_ratio": "市盈率(动)",
     }
@@ -72,8 +75,6 @@ class AKShareKeyMetricsFetcher(
         **kwargs: Any,
     ) -> List[Dict]:
         """Return the raw data from the AKShare endpoint."""
-        api_key = credentials.get("akshare_api_key") if credentials else ""
-
         symbols = query.symbol.split(",")
         results: List = []
 
@@ -84,7 +85,7 @@ class AKShareKeyMetricsFetcher(
 
             results.append(df_base['数值'].to_dict())
 
-        await asyncio.gather(*[get_one(symbol, api_key) for symbol in symbols])
+        await asyncio.gather(*[get_one(symbol, None) for symbol in symbols])
 
         if not results:
             raise EmptyDataError(f"No data found for given symbols -> {query.symbol}.")
