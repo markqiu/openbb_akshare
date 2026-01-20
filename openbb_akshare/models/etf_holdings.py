@@ -13,7 +13,6 @@ from openbb_core.provider.standard_models.etf_holdings import (
     EtfHoldingsQueryParams,
 )
 from openbb_core.provider.utils.descriptions import QUERY_DESCRIPTIONS
-from openbb_core.provider.utils.errors import EmptyDataError
 from pydantic import Field, field_validator
 
 
