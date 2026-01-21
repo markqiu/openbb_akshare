@@ -24,5 +24,8 @@ pytest = "^9.0.1"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.plugins."openbb_core_extension"]
+akshare = "openbb_akshare.router:router"
+
 [tool.poetry.plugins."openbb_provider_extension"]
 akshare = "openbb_akshare:provider"
